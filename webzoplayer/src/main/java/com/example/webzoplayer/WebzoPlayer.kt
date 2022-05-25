@@ -95,11 +95,13 @@ class WebzoPlayer(surface: Surface) : HTMLVideoElement {
       val newExtractor = MediaExtractor()
       newExtractor.setDataSource(src)
 
+      Log.d(TAG, "Demuxing media: $src")
       var newDecoder: MediaCodec? = null
       for (i in 0..newExtractor.trackCount) {
         val format = newExtractor.getTrackFormat(i)
         val mime =
           format.getString(MediaFormat.KEY_MIME) ?: throw Exception("Panic: Mime is missing.")
+        Log.d(TAG, "Track $i: MimeType: $mime")
         if (!mime.startsWith("video/")) {
           // Audio tracks, caption, etc..
           continue
