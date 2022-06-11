@@ -10,20 +10,25 @@ import java.nio.ByteBuffer
 
 class WebzoPlayer(surface: Surface) : HTMLVideoElement {
 
-  private val playerThread = PlayerThread(surface)
+  @Volatile
+  private var playerThread: PlayerThread? = PlayerThread(surface)
 
   fun terminate() {
-    playerThread.interrupt()
+    checkNotNull(playerThread).interrupt()
   }
 
   override var src: String = ""
     set(value) {
-      playerThread.src = value
+      checkNotNull(playerThread).src = value
       field = value
     }
 
+  override fun pause() {
+    playerThread = null
+  }
+
   override fun play() {
-    playerThread.start()
+    checkNotNull(playerThread).start()
   }
 
   private inner class PlayerThread(private val surface: Surface) : Thread() {
@@ -47,7 +52,9 @@ class WebzoPlayer(surface: Surface) : HTMLVideoElement {
       var isEOS = false
       val startTimeMs = SystemClock.elapsedRealtime()
 
-      while (!interrupted()) {
+      val currentThread = Thread.currentThread()
+
+      while (!interrupted() && currentThread == playerThread) {
         if (!isEOS) {
           // Media codec state is Running.
           val inputBufferIndex = decoder!!.dequeueInputBuffer(10000)
