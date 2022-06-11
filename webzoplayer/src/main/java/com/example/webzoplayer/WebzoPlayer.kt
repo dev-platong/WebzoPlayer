@@ -8,27 +8,25 @@ import android.util.Log
 import android.view.Surface
 import java.nio.ByteBuffer
 
-class WebzoPlayer(surface: Surface) : HTMLVideoElement {
+class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
 
   @Volatile
-  private var playerThread: PlayerThread? = PlayerThread(surface)
+  private var playerThread: PlayerThread? = null
 
   fun terminate() {
     checkNotNull(playerThread).interrupt()
   }
 
   override var src: String = ""
-    set(value) {
-      checkNotNull(playerThread).src = value
-      field = value
-    }
 
   override fun pause() {
     playerThread = null
   }
 
   override fun play() {
-    checkNotNull(playerThread).start()
+    playerThread = PlayerThread(surface)
+    playerThread!!.src = src
+    playerThread!!.start()
   }
 
   private inner class PlayerThread(private val surface: Surface) : Thread() {

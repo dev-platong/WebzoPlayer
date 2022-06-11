@@ -3,17 +3,21 @@ package com.example.demo
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.webzoplayer.WebzoPlayer
 
 class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
   private var player: WebzoPlayer? = null
+  private var surfaceView: SurfaceView? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
 
     // READ_EXTERNAL_STORAGEパーミッションが許可されているかチェックする
     val isGranted = ContextCompat.checkSelfPermission(
@@ -29,6 +33,22 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
       return
     }
     setupSurface()
+
+    val playButton = findViewById<Button>(R.id.button)
+    playButton.setOnClickListener {
+      val holder = surfaceView?.holder
+      if (player == null && holder != null) {
+        player = WebzoPlayer(holder.surface)
+        player!!.src = "file:///storage/emulated/0/DCIM/Camera/PXL_20220609_085249872.mp4"
+        player!!.play()
+      } else if (holder != null) {
+        player!!.play()
+      }
+    }
+    val pauseButton = findViewById<Button>(R.id.button2)
+    pauseButton.setOnClickListener {
+      player?.pause()
+    }
   }
 
   override fun onRequestPermissionsResult(
@@ -50,7 +70,7 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
   override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
     if (player != null) return
     player = WebzoPlayer(holder.surface)
-    player!!.src = "file:///storage/emulated/0/DCIM/avc_stream_10seconds.mp4"
+    player!!.src = "file:///storage/emulated/0/DCIM/Camera/PXL_20220609_085249872.mp4"
     player!!.play()
   }
 
@@ -59,9 +79,8 @@ class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
   }
 
   private fun setupSurface() {
-    val surfaceView = SurfaceView(this)
-    surfaceView.holder.addCallback(this)
-    setContentView(surfaceView)
+    surfaceView = findViewById(R.id.surfaceView)
+    surfaceView?.holder?.addCallback(this)
   }
 
   companion object {
