@@ -101,7 +101,7 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
       val newExtractor = MediaExtractor()
       newExtractor.setDataSource(src)
 
-      Log.d(TAG, "Demuxing media: $src")
+      Log.d(TAG, "Demultiplexing media: $src")
       var newDecoder: MediaCodec? = null
       for (i in 0..newExtractor.trackCount) {
         val format = newExtractor.getTrackFormat(i)
