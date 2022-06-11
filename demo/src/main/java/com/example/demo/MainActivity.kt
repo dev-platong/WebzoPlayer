@@ -3,7 +3,6 @@ package com.example.demo
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button

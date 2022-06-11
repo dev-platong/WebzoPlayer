@@ -24,6 +24,7 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
   }
 
   override fun play() {
+    if(playerThread != null) return
     playerThread = PlayerThread(surface)
     playerThread!!.src = src
     playerThread!!.start()
