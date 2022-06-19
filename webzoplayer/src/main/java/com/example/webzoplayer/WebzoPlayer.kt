@@ -18,6 +18,8 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
     // XXX: スレッドが複数ある可能性今はないし複数は想定してない
     private var decoder: MediaCodec? = null
     private var extractor: MediaExtractor? = null
+    private val bufferInfo = MediaCodec.BufferInfo()
+    private var lastPausedPresentationTimeMs = 0L
 
     fun terminate() {
         checkNotNull(playerThread).interrupt()
@@ -68,6 +70,7 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
         if (newDecoder == null) {
             throw Exception("Panic: Can't find decoder on this device.")
         }
+        newDecoder.start()
         return newDecoder to newExtractor
     }
 
@@ -79,18 +82,21 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
         override fun run() {
             checkNotNull(decoder)
             checkNotNull(extractor)
-            // Media codec state is Flushed.
-            decoder!!.start()
+            Log.d(TAG, "playback thread is started.")
 
             val inputBuffers = decoder!!.inputBuffers
-            val outputBufferInfo = MediaCodec.BufferInfo()
 
             var isEOS = false
             val startTimeMs = SystemClock.elapsedRealtime()
 
             val currentThread = Thread.currentThread()
 
-            while (!interrupted() && currentThread == playerThread) {
+            while (!interrupted()) {
+                if (currentThread != playerThread) {
+                    Log.d(TAG, "playback thread is ended.")
+                    lastPausedPresentationTimeMs = bufferInfo.presentationTimeUs / 1000
+                    return
+                }
                 if (!isEOS) {
                     // Media codec state is Running.
                     val inputBufferIndex = decoder!!.dequeueInputBuffer(10000)
@@ -100,17 +106,18 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
                             queueSampleFromExtractorToInputBuffer(inputBufferIndex, inputBuffers)
                     }
                 }
-                val outputBufferIndex = decoder!!.dequeueOutputBuffer(outputBufferInfo, 10000)
+                val outputBufferIndex = decoder!!.dequeueOutputBuffer(bufferInfo, 10000)
                 when (outputBufferIndex) {
                     MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> Log.d(TAG, "Output format changed.")
                     MediaCodec.INFO_TRY_AGAIN_LATER -> Log.d(TAG, "dequeue output buffer timeout.")
                     else -> {
                         while (isPlaybackTooFast(
-                                outputBufferInfo.presentationTimeUs / 1000,
+                                bufferInfo.presentationTimeUs / 1000,
                                 startTimeMs
                             )
                         ) {
                             try {
+                                Log.d(TAG, "Sleep is exec")
                                 sleep(10)
                             } catch (e: java.lang.Exception) {
                                 Log.v(TAG, "Too many sleep.")
@@ -120,7 +127,7 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
                         decoder!!.releaseOutputBuffer(outputBufferIndex, true)
                     }
                 }
-                if (outputBufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                     Log.d(TAG_LOG_OMNISCIENCE, LABEL_LOG_DEQUEUE_EOS)
                     break
                 }
@@ -135,7 +142,7 @@ class WebzoPlayer(private val surface: Surface) : HTMLVideoElement {
             outputBufferPresentationTimeMs: Long,
             startTimeMs: Long
         ): Boolean {
-            return outputBufferPresentationTimeMs > SystemClock.elapsedRealtime() - startTimeMs
+            return outputBufferPresentationTimeMs > (SystemClock.elapsedRealtime() - startTimeMs + lastPausedPresentationTimeMs)
         }
 
 
